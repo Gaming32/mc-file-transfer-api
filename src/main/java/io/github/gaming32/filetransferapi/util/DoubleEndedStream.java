@@ -1,5 +1,6 @@
 package io.github.gaming32.filetransferapi.util;
 
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -27,10 +28,14 @@ public final class DoubleEndedStream {
         blocks.add(readBlock = writeBlock = new byte[blockSize]);
     }
 
+    @NotNull
+    @Contract(pure = true)
     public InputStream inputStream() {
         return outputEnd;
     }
 
+    @NotNull
+    @Contract(pure = true)
     public OutputStream outputStream() {
         return inputEnd;
     }
