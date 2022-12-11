@@ -69,7 +69,7 @@ public final class TransferInputStream extends InputStream {
             if (shouldBeSelf != this) {
                 FileTransferMod.LOGGER.warn(
                     "File download {} in ACTIVE_DOWNLOADS is a mismatched stream. Expected {}, got {}.",
-                    transferId, this, shouldBeSelf
+                    Long.toUnsignedString(transferId, 16), this, shouldBeSelf
                 );
             }
             new TransferCancelPacket(transferId).sendPacket(packetSender);

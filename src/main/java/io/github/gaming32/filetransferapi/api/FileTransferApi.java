@@ -101,6 +101,14 @@ public final class FileTransferApi {
 
     @NotNull
     public static InputStream downloadFile(
+        @NotNull net.fabricmc.fabric.api.networking.v1.PacketSender packetSender,
+        @NotNull Identifier file
+    ) {
+        return downloadFile(FileTransferMod.convertFapiPacketSender(packetSender), file);
+    }
+
+    @NotNull
+    public static InputStream downloadFile(
         @NotNull PacketSender packetSender,
         @NotNull Identifier file
     ) {
@@ -109,6 +117,15 @@ public final class FileTransferApi {
             file,
             packetSender.isClientbound() ? TransferConfig.DEFAULT_FROM_CLIENT : TransferConfig.DEFAULT_FROM_SERVER
         );
+    }
+
+    @NotNull
+    public static InputStream downloadFile(
+        @NotNull net.fabricmc.fabric.api.networking.v1.PacketSender packetSender,
+        @NotNull Identifier file,
+        @NotNull TransferConfig config
+    ) {
+        return downloadFile(FileTransferMod.convertFapiPacketSender(packetSender), file, config);
     }
 
     @NotNull

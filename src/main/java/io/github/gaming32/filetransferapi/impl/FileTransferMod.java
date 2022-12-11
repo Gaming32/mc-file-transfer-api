@@ -15,6 +15,8 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.fabric.impl.networking.client.ClientPlayNetworkAddon;
+import net.fabricmc.fabric.impl.networking.server.ServerPlayNetworkAddon;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -57,16 +59,16 @@ public class FileTransferMod implements ModInitializer {
         final RequestFilePacket packet = new RequestFilePacket(buf);
         final Consumer<OutputStream> requestHandler = FileTransferApi.getDownloadRequestHandlers().get(packet.file());
         if (requestHandler == null) return;
-        final TransferOutputStream out = new TransferOutputStream(packet.transferId(), sender);
+        final TransferOutputStream out = new TransferOutputStream(packet.transferId(), sender, packet.config().maxBlockSize());
         ACTIVE_UPLOADS.put(packet.transferId(), out);
-        requestHandler.accept(new BufferedOutputStream(out));
+        requestHandler.accept(new BufferedOutputStream(out, packet.config().maxBlockSize()));
     }
 
     static void transferBlock(PacketByteBuf buf) {
         final TransferBlockPacket packet = new TransferBlockPacket(buf);
         final TransferInputStream stream = ACTIVE_DOWNLOADS.get(packet.transferId());
         if (stream == null) {
-            LOGGER.warn("Received file data for closed transfer {}.", packet.transferId());
+            LOGGER.warn("Received file data for closed transfer {}.", Long.toUnsignedString(packet.transferId(), 16));
             return;
         }
         try {
@@ -78,18 +80,16 @@ public class FileTransferMod implements ModInitializer {
 
     static void transferCancel(PacketByteBuf buf) {
         final TransferCancelPacket packet = new TransferCancelPacket(buf);
-        final TransferInputStream in = ACTIVE_DOWNLOADS.remove(packet.transferId());
+        final TransferInputStream in = ACTIVE_DOWNLOADS.get(packet.transferId());
         if (in != null) {
             in.getIn().closeWrite();
         }
-        final TransferOutputStream out = ACTIVE_UPLOADS.remove(packet.transferId());
+        final TransferOutputStream out = ACTIVE_UPLOADS.get(packet.transferId());
         if (out != null) {
             out.close();
         }
-        if (in == null && out == null) {
-            LOGGER.warn("Received cancellation for nonexistent transfer {}.", packet.transferId());
-        } else if (in != null && out != null) {
-            LOGGER.warn("Transfer {} was both an upload and a download.", packet.transferId());
+        if (in != null && out != null) {
+            LOGGER.warn("Transfer {} was both an upload and a download.", Long.toUnsignedString(packet.transferId(), 16));
         }
     }
 
@@ -108,5 +108,26 @@ public class FileTransferMod implements ModInitializer {
         final TransferInputStream result = new TransferInputStream(transferId, packetSender, stream, config.streamType() == StreamType.STREAM);
         ACTIVE_DOWNLOADS.put(transferId, result);
         return result;
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    public static PacketSender convertFapiPacketSender(net.fabricmc.fabric.api.networking.v1.PacketSender packetSender) {
+        if (!(packetSender instanceof ServerPlayNetworkAddon) && !(packetSender instanceof ClientPlayNetworkAddon)) {
+            throw new IllegalArgumentException(
+                "Fabric API PacketSender must be either ServerPlayNetworkAddon or ClientPlayNetworkAddon, but was" +
+                    packetSender.getClass().getSimpleName()
+            );
+        }
+        return new PacketSender() {
+            @Override
+            public void sendPacket(Identifier channel, PacketByteBuf buf) {
+                packetSender.sendPacket(channel, buf);
+            }
+
+            @Override
+            public boolean isClientbound() {
+                return packetSender instanceof ServerPlayNetworkAddon;
+            }
+        };
     }
 }

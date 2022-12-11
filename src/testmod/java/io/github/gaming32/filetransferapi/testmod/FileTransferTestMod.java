@@ -1,6 +1,7 @@
 package io.github.gaming32.filetransferapi.testmod;
 
 import io.github.gaming32.filetransferapi.api.FileTransferApi;
+import io.github.gaming32.filetransferapi.api.TransferConfig;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -19,6 +20,8 @@ public class FileTransferTestMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        final TransferConfig config = TransferConfig.builder().maxBlockSize(5).build();
+
         FileTransferApi.registerDownloadRequestHandler(
             TEST_CLIENT,
             () -> new ReaderInputStream(new StringReader("Hello world from client!\n"), StandardCharsets.UTF_8)
@@ -30,7 +33,7 @@ public class FileTransferTestMod implements ModInitializer {
         );
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> CompletableFuture.runAsync(() -> {
-            try (InputStream is = FileTransferApi.downloadFile(handler, TEST_CLIENT)) {
+            try (InputStream is = FileTransferApi.downloadFile(sender, TEST_CLIENT, config)) {
                 is.transferTo(System.out);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -38,7 +41,7 @@ public class FileTransferTestMod implements ModInitializer {
         }));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> CompletableFuture.runAsync(() -> {
-            try (InputStream is = FileTransferApi.downloadFile(handler, TEST_SERVER)) {
+            try (InputStream is = FileTransferApi.downloadFile(sender, TEST_SERVER, config)) {
                 is.transferTo(System.out);
             } catch (IOException e) {
                 e.printStackTrace();

@@ -1,9 +1,7 @@
 package io.github.gaming32.filetransferapi.impl.packets;
 
 import io.github.gaming32.filetransferapi.api.PacketSender;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.ApiStatus;
@@ -20,10 +18,6 @@ public interface FileTransferPacket {
     default void sendPacket(PacketSender sender) {
         final PacketByteBuf buf = PacketByteBufs.create();
         write(buf);
-        sender.send(
-            sender.isClientbound()
-                ? ServerPlayNetworking.createS2CPacket(getChannel(), buf)
-                : ClientPlayNetworking.createC2SPacket(getChannel(), buf)
-        );
+        sender.sendPacket(getChannel(), buf);
     }
 }

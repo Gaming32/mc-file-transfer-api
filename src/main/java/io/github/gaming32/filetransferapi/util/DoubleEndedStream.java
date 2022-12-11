@@ -68,6 +68,7 @@ public final class DoubleEndedStream {
                 writePointer += toWrite;
                 len -= toWrite;
             }
+            readyCondition.signal();
         } finally {
             lock.unlock();
         }
@@ -106,8 +107,14 @@ public final class DoubleEndedStream {
                 final int toRead;
                 if (readBlock == writeBlock) {
                     if (writePointer == readPointer) {
-                        if (read == 0 && !writeClosed) {
+                        if (read == 0) {
+                            if (writeClosed) {
+                                return -1;
+                            }
                             readyCondition.await();
+                            if (writeClosed) {
+                                return -1;
+                            }
                             if (readBlock == writeBlock) {
                                 if (readPointer == writePointer) {
                                     break;
@@ -134,6 +141,7 @@ public final class DoubleEndedStream {
                     if (readBlock == writeBlock) {
                         readPointer = writePointer = 0; // Reset the block if it's full
                     } else {
+                        readPointer = 0;
                         blocks.removeFirst();
                         readBlock = blocks.getFirst();
                     }

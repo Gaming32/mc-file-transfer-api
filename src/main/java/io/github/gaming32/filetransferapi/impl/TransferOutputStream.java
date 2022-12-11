@@ -11,11 +11,13 @@ import java.io.OutputStream;
 public final class TransferOutputStream extends OutputStream {
     private final long transferId;
     private final PacketSender packetSender;
+    private final int maxBlockSize;
     private boolean closed;
 
-    public TransferOutputStream(long transferId, PacketSender packetSender) {
+    public TransferOutputStream(long transferId, PacketSender packetSender, int maxBlockSize) {
         this.transferId = transferId;
         this.packetSender = packetSender;
+        this.maxBlockSize = maxBlockSize;
     }
 
     private void ensureOpen() throws IOException {
@@ -32,7 +34,12 @@ public final class TransferOutputStream extends OutputStream {
     @Override
     public void write(byte @NotNull [] b, int off, int len) throws IOException {
         ensureOpen();
-        new TransferBlockPacket(transferId, b, off, len).sendPacket(packetSender);
+        while (len > 0) {
+            final int toWrite = Math.min(len, maxBlockSize);
+            new TransferBlockPacket(transferId, b, off, toWrite).sendPacket(packetSender);
+            off += toWrite;
+            len -= toWrite;
+        }
     }
 
     @Override
@@ -43,7 +50,7 @@ public final class TransferOutputStream extends OutputStream {
             if (shouldBeSelf != this) {
                 FileTransferMod.LOGGER.warn(
                     "File upload {} in ACTIVE_UPLOADS is a mismatched stream. Expected {}, got {}.",
-                    transferId, this, shouldBeSelf
+                    Long.toUnsignedString(transferId, 16), this, shouldBeSelf
                 );
             }
             new TransferCancelPacket(transferId).sendPacket(packetSender);
