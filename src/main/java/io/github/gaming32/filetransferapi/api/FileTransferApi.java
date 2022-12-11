@@ -17,11 +17,12 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public final class FileTransferApi {
-    private static final Map<Identifier, Consumer<OutputStream>> DOWNLOAD_REQUEST_HANDLERS = new LinkedHashMap<>();
+    private static final Map<Identifier, BiConsumer<OutputStream, TransferConfig>> DOWNLOAD_REQUEST_HANDLERS = new LinkedHashMap<>();
 
     private FileTransferApi() {
         throw new AssertionError();
@@ -31,20 +32,22 @@ public final class FileTransferApi {
         @NotNull Identifier file,
         @NotNull Supplier<InputStream> handler
     ) {
-        registerDownloadRequestHandler(file, output -> {
+        registerDownloadRequestHandler(file, (output, config) -> {
             final InputStream is = handler.get();
-            try (is; output) {
-                is.transferTo(output);
-                output.flush();
-            } catch (IOException e) {
-                FileTransferMod.LOGGER.warn("IOException while transferring " + file + " (" + is + ")", e);
-            }
+            CompletableFuture.runAsync(() -> {
+                try (is; output) {
+                    is.transferTo(output);
+                    output.flush();
+                } catch (IOException e) {
+                    FileTransferMod.LOGGER.warn("IOException while transferring " + file + " (" + is + ")", e);
+                }
+            });
         });
     }
 
     public static void registerDownloadRequestHandler(
         @NotNull Identifier file,
-        @NotNull Consumer<@NotNull OutputStream> handler
+        @NotNull BiConsumer<@NotNull OutputStream, @NotNull TransferConfig> handler
     ) {
         DOWNLOAD_REQUEST_HANDLERS.put(file, handler);
     }
@@ -61,7 +64,7 @@ public final class FileTransferApi {
     @NotNull
     @UnmodifiableView
     @Contract(pure = true)
-    public static Map<@NotNull Identifier, @NotNull Consumer<@NotNull OutputStream>> getDownloadRequestHandlers() {
+    public static Map<@NotNull Identifier, @NotNull BiConsumer<@NotNull OutputStream, @NotNull TransferConfig>> getDownloadRequestHandlers() {
         return Collections.unmodifiableMap(DOWNLOAD_REQUEST_HANDLERS);
     }
 

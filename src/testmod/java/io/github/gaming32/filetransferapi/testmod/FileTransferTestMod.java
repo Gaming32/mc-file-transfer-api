@@ -1,6 +1,7 @@
 package io.github.gaming32.filetransferapi.testmod;
 
 import io.github.gaming32.filetransferapi.api.FileTransferApi;
+import io.github.gaming32.filetransferapi.api.StreamType;
 import io.github.gaming32.filetransferapi.api.TransferConfig;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -20,7 +21,10 @@ public class FileTransferTestMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        final TransferConfig config = TransferConfig.builder().maxBlockSize(5).build();
+        final TransferConfig config = TransferConfig.builder()
+            .maxBlockSize(5)
+            .streamType(StreamType.STREAM)
+            .build();
 
         FileTransferApi.registerDownloadRequestHandler(
             TEST_CLIENT,

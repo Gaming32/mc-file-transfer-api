@@ -28,6 +28,12 @@ public final class DoubleEndedStream {
         blocks.add(readBlock = writeBlock = new byte[blockSize]);
     }
 
+    private void ensureWriteOpen() throws IOException {
+        if (writeClosed) {
+            throw new IOException("DoubleEndedStream is closed for write.");
+        }
+    }
+
     @NotNull
     @Contract(pure = true)
     public InputStream inputStream() {
@@ -40,9 +46,10 @@ public final class DoubleEndedStream {
         return inputEnd;
     }
 
-    public void write(int b) {
+    public void write(int b) throws IOException {
         lock.lock();
         try {
+            ensureWriteOpen();
             if (writePointer == blockSize) {
                 writePointer = 0;
                 blocks.addLast(writeBlock = new byte[blockSize]);
@@ -57,6 +64,7 @@ public final class DoubleEndedStream {
     public void write(byte @NotNull [] b, int off, int len) throws IOException {
         lock.lock();
         try {
+            ensureWriteOpen();
             while (len > 0) {
                 if (blockSize == writePointer) {
                     writePointer = 0;
@@ -194,6 +202,15 @@ public final class DoubleEndedStream {
         }
     }
 
+    public void awaitMaybeReadyUninterruptibly() {
+        lock.lock();
+        try {
+            readyCondition.awaitUninterruptibly();
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public void closeWrite() {
         lock.lock();
         try {
@@ -204,22 +221,19 @@ public final class DoubleEndedStream {
         }
     }
 
-    private final class InputEnd extends OutputStream {
-        private void ensureOpen() throws IOException {
-            if (writeClosed) {
-                throw new IOException("DoubleEndedInputStream.outputStream() is closed.");
-            }
-        }
+    @Contract(pure = true)
+    public boolean isWriteClosed() {
+        return writeClosed;
+    }
 
+    private final class InputEnd extends OutputStream {
         @Override
         public void write(int b) throws IOException {
-            ensureOpen();
             DoubleEndedStream.this.write(b);
         }
 
         @Override
         public void write(byte @NotNull [] b, int off, int len) throws IOException {
-            ensureOpen();
             DoubleEndedStream.this.write(b, off, len);
         }
 
@@ -229,8 +243,8 @@ public final class DoubleEndedStream {
         }
     }
 
-    private final class OutputEnd extends InputStream {
-        private boolean closed;
+        private final class OutputEnd extends InputStream {
+            private boolean closed;
 
         private void ensureOpen() throws IOException {
             if (closed) {

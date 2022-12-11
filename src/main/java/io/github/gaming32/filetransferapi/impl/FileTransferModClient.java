@@ -21,5 +21,10 @@ public class FileTransferModClient implements ClientModInitializer {
             FileTransferPackets.TRANSFER_CANCEL,
             (server, handler, buf, responseSender) -> FileTransferMod.transferCancel(buf)
         );
+
+        ClientPlayNetworking.registerGlobalReceiver(
+            FileTransferPackets.TRANSFER_REQUEST_BLOCK,
+            (server, handler, buf, responseSender) -> FileTransferMod.transferRequestBlock(buf)
+        );
     }
 }

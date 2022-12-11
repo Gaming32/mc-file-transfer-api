@@ -4,10 +4,7 @@ import io.github.gaming32.filetransferapi.api.FileTransferApi;
 import io.github.gaming32.filetransferapi.api.PacketSender;
 import io.github.gaming32.filetransferapi.api.StreamType;
 import io.github.gaming32.filetransferapi.api.TransferConfig;
-import io.github.gaming32.filetransferapi.impl.packets.FileTransferPackets;
-import io.github.gaming32.filetransferapi.impl.packets.RequestFilePacket;
-import io.github.gaming32.filetransferapi.impl.packets.TransferBlockPacket;
-import io.github.gaming32.filetransferapi.impl.packets.TransferCancelPacket;
+import io.github.gaming32.filetransferapi.impl.packets.*;
 import io.github.gaming32.filetransferapi.util.DoubleEndedStream;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -24,9 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.security.SecureRandom;
-import java.util.function.Consumer;
 
 public class FileTransferMod implements ModInitializer {
     public static final String MOD_ID = "file-transfer-api";
@@ -53,15 +48,20 @@ public class FileTransferMod implements ModInitializer {
             FileTransferPackets.TRANSFER_CANCEL,
             (server, player, handler, buf, responseSender) -> transferCancel(buf)
         );
+
+        ServerPlayNetworking.registerGlobalReceiver(
+            FileTransferPackets.TRANSFER_REQUEST_BLOCK,
+            (server, player, handler, buf, responseSender) -> transferRequestBlock(buf)
+        );
     }
 
     static void requestFile(PacketByteBuf buf, PacketSender sender) {
         final RequestFilePacket packet = new RequestFilePacket(buf);
-        final Consumer<OutputStream> requestHandler = FileTransferApi.getDownloadRequestHandlers().get(packet.file());
+        final var requestHandler = FileTransferApi.getDownloadRequestHandlers().get(packet.file());
         if (requestHandler == null) return;
-        final TransferOutputStream out = new TransferOutputStream(packet.transferId(), sender, packet.config().maxBlockSize());
+        final TransferOutputStream out = new TransferOutputStream(packet.transferId(), sender, packet.config().maxBlockSize(), packet.config().streamType() == StreamType.STREAM);
         ACTIVE_UPLOADS.put(packet.transferId(), out);
-        requestHandler.accept(new BufferedOutputStream(out, packet.config().maxBlockSize()));
+        requestHandler.accept(new BufferedOutputStream(out, packet.config().maxBlockSize()), packet.config());
     }
 
     static void transferBlock(PacketByteBuf buf) {
@@ -93,6 +93,16 @@ public class FileTransferMod implements ModInitializer {
         }
     }
 
+    static void transferRequestBlock(PacketByteBuf buf) {
+        final TransferRequestBlockPacket packet = new TransferRequestBlockPacket(buf);
+        final TransferOutputStream out = ACTIVE_UPLOADS.get(packet.transferId());
+        if (out == null) {
+            LOGGER.warn("A block was requested from non-existent transfer {}.", Long.toUnsignedString(packet.transferId(), 16));
+            return;
+        }
+        out.notifyAcceptWrite();
+    }
+
     public static long generateTransferId() {
         long id;
         do {
@@ -105,7 +115,7 @@ public class FileTransferMod implements ModInitializer {
         final long transferId = generateTransferId();
         new RequestFilePacket(transferId, file, config).sendPacket(packetSender);
         final DoubleEndedStream stream = new DoubleEndedStream(config.maxBlockSize());
-        final TransferInputStream result = new TransferInputStream(transferId, packetSender, stream, config.streamType() == StreamType.STREAM);
+        final TransferInputStream result = new TransferInputStream(transferId, packetSender, stream, config.streamType());
         ACTIVE_DOWNLOADS.put(transferId, result);
         return result;
     }
