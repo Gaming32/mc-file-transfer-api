@@ -2,6 +2,7 @@ package io.github.gaming32.filetransferapi.api;
 
 import net.minecraft.network.PacketByteBuf;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -44,6 +45,8 @@ public record TransferConfig(int maxBlockSize, @NotNull StreamType streamType) {
         buf.writeEnumConstant(streamType);
     }
 
+    @NotNull
+    @Contract(value = " -> new", pure = true)
     public static Builder builder() {
         return new Builder();
     }
@@ -55,16 +58,20 @@ public record TransferConfig(int maxBlockSize, @NotNull StreamType streamType) {
         private Builder() {
         }
 
+        @Contract(value = "_ -> this")
         public Builder maxBlockSize(int maxBlockSize) {
             this.maxBlockSize = validateMaxBlockSize(maxBlockSize);
             return this;
         }
 
+        @Contract(value = "_ -> this")
         public Builder streamType(@NotNull StreamType streamType) {
             this.streamType = Objects.requireNonNull(streamType);
             return this;
         }
 
+        @NotNull
+        @Contract(" -> new")
         public TransferConfig build() {
             return new TransferConfig(maxBlockSize, streamType);
         }

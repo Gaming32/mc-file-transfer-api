@@ -82,8 +82,8 @@ public final class FileTransferApi {
         return downloadFile(player.networkHandler, file, TransferConfig.DEFAULT_FROM_CLIENT);
     }
 
-    @Environment(EnvType.CLIENT)
     @NotNull
+    @Environment(EnvType.CLIENT)
     public static InputStream downloadFileFromServer(
         @NotNull Identifier file,
         @NotNull TransferConfig config
@@ -91,8 +91,8 @@ public final class FileTransferApi {
         return downloadFile(Objects.requireNonNull(MinecraftClient.getInstance().getNetworkHandler()), file, config);
     }
 
-    @Environment(EnvType.CLIENT)
     @NotNull
+    @Environment(EnvType.CLIENT)
     public static InputStream downloadFileFromServer(
         @NotNull Identifier file
     ) {
