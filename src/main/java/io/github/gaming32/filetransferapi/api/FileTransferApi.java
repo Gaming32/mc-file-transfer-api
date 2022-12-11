@@ -4,7 +4,6 @@ import io.github.gaming32.filetransferapi.impl.FileTransferMod;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Contract;
@@ -108,7 +107,7 @@ public final class FileTransferApi {
         return downloadFile(
             packetSender,
             file,
-            packetSender instanceof ServerPlayNetworkHandler ? TransferConfig.DEFAULT_FROM_CLIENT : TransferConfig.DEFAULT_FROM_SERVER
+            packetSender.isClientbound() ? TransferConfig.DEFAULT_FROM_CLIENT : TransferConfig.DEFAULT_FROM_SERVER
         );
     }
 

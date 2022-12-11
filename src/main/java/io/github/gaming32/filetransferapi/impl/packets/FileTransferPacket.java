@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
-import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -21,8 +20,8 @@ public interface FileTransferPacket {
     default void sendPacket(PacketSender sender) {
         final PacketByteBuf buf = PacketByteBufs.create();
         write(buf);
-        sender.sendPacket(
-            sender instanceof ServerPlayNetworkHandler
+        sender.send(
+            sender.isClientbound()
                 ? ServerPlayNetworking.createS2CPacket(getChannel(), buf)
                 : ClientPlayNetworking.createC2SPacket(getChannel(), buf)
         );
