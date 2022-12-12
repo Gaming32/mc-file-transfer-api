@@ -178,7 +178,7 @@ public final class DoubleEndedStream {
     }
 
     public boolean readWouldBlock() {
-        return minSize() == 0;
+        return minSize() == 0 && !writeClosed;
     }
 
     public int size() {

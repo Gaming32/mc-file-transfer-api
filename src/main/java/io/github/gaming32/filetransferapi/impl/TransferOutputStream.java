@@ -43,14 +43,14 @@ public final class TransferOutputStream extends OutputStream {
     public void write(byte @NotNull [] b, int off, int len) throws IOException {
         lock.lock();
         try {
-            if (waitForRequest != null) {
-                try {
-                    waitForRequest.await();
-                } catch (InterruptedException ignored) {
-                }
-            }
             ensureOpen();
             while (len > 0) {
+                if (waitForRequest != null) {
+                    try {
+                        waitForRequest.await();
+                    } catch (InterruptedException ignored) {
+                    }
+                }
                 final int toWrite = Math.min(len, maxBlockSize);
                 new TransferBlockPacket(transferId, b, off, toWrite).sendPacket(packetSender);
                 off += toWrite;
